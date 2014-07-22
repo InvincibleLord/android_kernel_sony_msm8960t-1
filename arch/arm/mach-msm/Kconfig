@@ -934,20 +934,6 @@ config MACH_BLUE_TSUBASA
         help
           Support for the Sony Tsubasa RoW
 
-config MACH_BLUE_TSUBASA_DCM
-        depends on ARCH_MSM8960
-        default n
-        bool "SONY Tsubasa Docomo"
-        help
-          Support for the Sony Tsubasa Docomo
-
-config MACH_BLUE_TSUBASA_KDDI
-        depends on ARCH_MSM8960
-        default n
-        bool "SONY Tsubasa KDDI"
-        help
-          Support for the Sony Tsubasa KDDI
-
 config MACH_BLUE_MINT
 	depends on ARCH_MSM8960
 	default n
@@ -961,13 +947,6 @@ config MACH_BLUE_HAYABUSA
 	bool "SONY Hayabusa"
 	help
 	  Support for the Sony Hayabusa
-
-config MACH_BLUE_HAYABUSA_DCM
-	depends on ARCH_MSM8960
-	default n
-	bool "SONY Hayabusa Maki"
-	help
-	  Support for the Sony Hayabusa Maki
 
 config MACH_VISKAN_HUASHAN
 	depends on ARCH_MSM8960

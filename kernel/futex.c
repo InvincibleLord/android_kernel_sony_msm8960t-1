@@ -721,25 +721,27 @@ lookup_pi_state(u32 uval, struct futex_hash_bucket *hb,
 				return -EINVAL;
 
 			/*
-  			 * Protect against a corrupted uval. If uval
-  			 * is 0x80000000 then pid is 0 and the waiter
-  			 * bit is set. So the deadlock check in the
-  			 * calling code has failed and we did not fall
-  			 * into the check above due to !pid.
-  			 */
-  			if (task && pi_state->owner == task)
-  				return -EDEADLK;
+			 * Protect against a corrupted uval. If uval
+			 * is 0x80000000 then pid is 0 and the waiter
+			 * bit is set. So the deadlock check in the
+			 * calling code has failed and we did not fall
+			 * into the check above due to !pid.
+			 */
+
+			if (task && pi_state->owner == task)
+				return -EDEADLK;
 
 		out_state:
 			atomic_inc(&pi_state->refcount);
 			*ps = pi_state;
+
 			return 0;
 		}
 	}
 
 	/*
 	 * We are the first waiter - try to look up the real owner and attach
-	 * the new pi_state to it, but bail out when TID = 0 [1]
+	 * the new pi_state to it, but bail out when TID = 0
 	 */
 	if (!pid)
 		return -ESRCH;
@@ -1285,8 +1287,8 @@ void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
  * then direct futex_lock_pi_atomic() to force setting the FUTEX_WAITERS bit.
  * hb1 and hb2 must be held by the caller.
  *
- * Return:
- *  0 - failed to acquire the lock atomically;
+ * Returns:
+ *  0 - failed to acquire the lock atomicly
  * >0 - acquired the lock, return value is vpid of the top_waiter
  * <0 - error
  */

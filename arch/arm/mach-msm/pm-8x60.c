@@ -825,7 +825,8 @@ int msm_pm_idle_prepare(struct cpuidle_device *dev,
 				break;
 
 			if (msm_pm_retention_tz_call &&
-				num_online_cpus() > 1) {
+				(num_online_cpus() > 1 ||
+				cpu_maps_is_updating())) {
 				allow = false;
 				break;
 			}

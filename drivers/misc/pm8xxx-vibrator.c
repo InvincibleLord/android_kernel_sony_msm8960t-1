@@ -1,5 +1,4 @@
 /* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
- * Copyright (C) 2012 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,7 +46,6 @@ struct pm8xxx_vib {
 };
 
 static struct pm8xxx_vib *vib_dev;
-
 static ssize_t pm8xxx_level_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
@@ -200,6 +198,8 @@ retry:
 	if (value == 0)
 		vib->state = 0;
 	else {
+		value = (value > vib->pdata->max_timeout_ms ?
+				 vib->pdata->max_timeout_ms : value);
 		vib->state = 1;
 		hrtimer_start(&vib->vib_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -315,7 +315,6 @@ static int __devinit pm8xxx_vib_probe(struct platform_device *pdev)
 	rc = device_create_file(vib->timed_dev.dev, &dev_attr_level);
 	if (rc < 0)
 		goto err_read_vib;
-
 	pm8xxx_vib_enable(&vib->timed_dev, pdata->initial_vibrate_ms);
 
 	platform_set_drvdata(pdev, vib);
