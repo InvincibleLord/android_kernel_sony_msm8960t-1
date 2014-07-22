@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2012,2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,6 +45,7 @@
 #define KGSL_END_OF_IB_IDENTIFIER	0x2ABEDEAD
 #define KGSL_END_OF_FRAME_IDENTIFIER	0x2E0F2E0F
 #define KGSL_NOP_IB_IDENTIFIER	        0x20F20F20
+#define KGSL_NOP_DATA_FILLER		0xFEEDFACE
 
 #ifdef CONFIG_MSM_SCM
 #define ADRENO_DEFAULT_PWRSCALE_POLICY  (&kgsl_pwrscale_policy_tz)
@@ -53,8 +54,6 @@
 #else
 #define ADRENO_DEFAULT_PWRSCALE_POLICY  NULL
 #endif
-
-void adreno_debugfs_init(struct kgsl_device *device);
 
 #define ADRENO_ISTORE_START 0x5000 /* Istore offset */
 
@@ -114,9 +113,6 @@ struct adreno_device {
 	struct ocmem_buf *ocmem_hdl;
 	unsigned int ocmem_base;
 	unsigned int gpu_cycles;
-	struct kgsl_memdesc on_resume_cmd;
-	unsigned int on_resume_ib[3];
-	bool on_resume_issueib;
 };
 
 #define PERFCOUNTER_FLAG_NONE 0x0
@@ -511,5 +507,11 @@ static inline int adreno_add_idle_cmds(struct adreno_device *adreno_dev,
 
 	return cmds - start;
 }
+
+#ifdef CONFIG_DEBUG_FS
+void adreno_debugfs_init(struct kgsl_device *device);
+#else
+static inline void adreno_debugfs_init(struct kgsl_device *device) { }
+#endif
 
 #endif /*__ADRENO_H */

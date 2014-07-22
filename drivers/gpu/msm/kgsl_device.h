@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2012,2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -187,6 +187,7 @@ struct kgsl_device {
 	struct dentry *d_debugfs;
 	struct idr context_idr;
 	struct early_suspend display_off;
+	rwlock_t context_lock;
 
 	void *snapshot;		/* Pointer to the snapshot memory region */
 	int snapshot_maxsize;   /* Max size of the snapshot region */
@@ -276,8 +277,23 @@ struct kgsl_context {
 	struct list_head events_list;
 };
 
+/**
+ * struct kgsl_process_private -  Private structure for a KGSL process (across
+ * all devices)
+ * @priv: Internal flags, use KGSL_PROCESS_* values
+ * @pid: ID for the task owner of the process
+ * @mem_lock: Spinlock to protect the process memory lists
+ * @refcount: kref object for reference counting the process
+ * @process_private_mutex: Mutex to synchronize access to the process struct
+ * @mem_rb: RB tree node for the memory owned by this process
+ * @idr: Iterator for assigning IDs to memory allocations
+ * @pagetable: Pointer to the pagetable owned by this process
+ * @kobj: Pointer to a kobj for the sysfs directory for this process
+ * @debug_root: Pointer to the debugfs root for this process
+ * @stats: Memory allocation statistics for this process
+ */
 struct kgsl_process_private {
-	unsigned int refcnt;
+	unsigned long priv;
 	pid_t pid;
 	spinlock_t mem_lock;
 
@@ -297,6 +313,14 @@ struct kgsl_process_private {
 		unsigned int cur;
 		unsigned int max;
 	} stats[KGSL_MEM_ENTRY_MAX];
+};
+
+/**
+ * enum kgsl_process_priv_flags - Private flags for kgsl_process_private
+ * @KGSL_PROCESS_INIT: Set if the process structure has been set up
+ */
+enum kgsl_process_priv_flags {
+	KGSL_PROCESS_INIT = 0,
 };
 
 struct kgsl_device_private {
@@ -447,10 +471,12 @@ kgsl_context_put(struct kgsl_context *context)
  * lightweight way to just increase the refcount on a known context rather then
  * walking through kgsl_context_get and searching the iterator
  */
-static inline void _kgsl_context_get(struct kgsl_context *context)
+static inline int _kgsl_context_get(struct kgsl_context *context)
 {
+	int ret = 0;
 	if (context)
-		kref_get(&context->refcount);
+		ret = kref_get_unless_zero(&context->refcount);
+	return ret;
 }
 
 /**
@@ -467,14 +493,19 @@ static inline void _kgsl_context_get(struct kgsl_context *context)
 static inline struct kgsl_context *kgsl_context_get(struct kgsl_device *device,
 		uint32_t id)
 {
+	int result = 0;
 	struct kgsl_context *context = NULL;
 
-	rcu_read_lock();
+	read_lock(&device->context_lock);
+
 	context = idr_find(&device->context_idr, id);
 
-	_kgsl_context_get(context);
+	result = _kgsl_context_get(context);
 
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
+
+	if (!result)
+		return NULL;
 	return context;
 }
 
@@ -525,4 +556,23 @@ static inline void kgsl_cancel_events_timestamp(struct kgsl_device *device,
 	kgsl_signal_event(device, context, timestamp, KGSL_EVENT_CANCELLED);
 }
 
+/**
+ * kgsl_sysfs_store() - parse a string from a sysfs store function
+ * @buf: Incoming string to parse
+ * @ptr: Pointer to an unsigned int to store the value
+ */
+static inline int kgsl_sysfs_store(const char *buf, unsigned int *ptr)
+{
+	unsigned int val;
+	int rc;
+
+	rc = kstrtou32(buf, 0, &val);
+	if (rc)
+		return rc;
+
+	if (ptr)
+		*ptr = val;
+
+	return 0;
+}
 #endif  /* __KGSL_DEVICE_H */
